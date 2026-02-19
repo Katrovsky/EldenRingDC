@@ -1,0 +1,17 @@
+# Style Customization Guide
+
+Edit `.death-text` in index.html:
+
+font-size: 10vw          - Text size (1vw = 1% viewport width)
+font-weight: 700         - 400 (normal) or 700 (bold)
+color: #ffd700           - Text color (hex)
+letter-spacing: 2px      - Space between letters
+
+text-shadow:             - Multiple shadows separated by commas
+  0 0 10px rgba(255, 215, 0, 0.8)   - glow: h-offset v-offset blur color
+  0 0 10px rgba(255, 215, 0, 0.4)   - outer glow
+  2px 2px 4px rgba(0, 0, 0, 1.0)    - drop shadow
+
+.update-indicator:
+color: #ff4444           - +1 indicator color
+font-size: 24px          - Indicator size
