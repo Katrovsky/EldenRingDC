@@ -1,0 +1,37 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.26'
+
+      - name: Build
+        run: |
+          mkdir dist
+          GOOS=linux  GOARCH=amd64 go build -ldflags="-s -w" -trimpath -o dist/ERcounter_linux  .
+          GOOS=windows GOARCH=amd64 go build -ldflags="-s -w" -trimpath -o dist/ERcounter_windows.exe .
+          zip -j dist/ERcounter_linux.zip   dist/ERcounter_linux
+          zip -j dist/ERcounter_windows.zip dist/ERcounter_windows.exe
+
+      - name: Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "${{ github.ref_name }}" \
+            --title "${{ github.ref_name }}" \
+            --generate-notes \
+            dist/ERcounter_linux.zip \
+            dist/ERcounter_windows.zip
