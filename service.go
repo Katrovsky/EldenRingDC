@@ -96,7 +96,7 @@ func runService(configPath, exeDir string) {
 			counter.Update(profile.Deaths, profile.Name)
 		}
 		if config.EnableTextFile {
-			os.WriteFile(deathFilePath, []byte(fmt.Sprintf("%d", profile.Deaths)), 0644)
+			os.WriteFile(deathFilePath, fmt.Appendf(nil, "%d", profile.Deaths), 0644)
 		}
 
 		fmt.Printf("[%s] %s - Deaths: %d\n",

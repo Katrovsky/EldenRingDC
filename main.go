@@ -160,10 +160,7 @@ func parseSaveData(data []byte) []Profile {
 		level := binary.LittleEndian.Uint16(data[headerOffset+CharLevelOffset : headerOffset+CharLevelOffset+2])
 		playTime := binary.LittleEndian.Uint32(data[headerOffset+CharPlaytimeOffset : headerOffset+CharPlaytimeOffset+4])
 
-		endSlot := slotOffset + SlotLength
-		if endSlot > len(data) {
-			endSlot = len(data)
-		}
+		endSlot := min(slotOffset+SlotLength, len(data))
 		deaths := findDeaths(data[slotOffset:endSlot])
 
 		profiles = append(profiles, Profile{
