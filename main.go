@@ -28,6 +28,9 @@ const (
 	CharNameLength             = 0x22
 	CharLevelOffset            = 0x22
 	CharPlaytimeOffset         = 0x26
+
+	eldenRingSteamID  = "1245620"
+	protonSaveRelPath = "pfx/drive_c/users/steamuser/AppData/Roaming/EldenRing"
 )
 
 type Config struct {
@@ -88,6 +91,15 @@ func getSavePath(config *Config) (string, error) {
 		return "", fmt.Errorf("save file not found at configured path: %s", config.SavePath)
 	}
 
+	switch runtime.GOOS {
+	case "windows":
+		return findSaveWindows()
+	default:
+		return findSaveLinux()
+	}
+}
+
+func findSaveWindows() (string, error) {
 	baseDir := filepath.Join(os.Getenv("APPDATA"), "EldenRing")
 
 	entries, err := os.ReadDir(baseDir)
@@ -104,6 +116,141 @@ func getSavePath(config *Config) (string, error) {
 		}
 	}
 	return "", fmt.Errorf("save file ER0000.sl2 not found")
+}
+
+func findSaveLinux() (string, error) {
+	steamRoots := collectSteamRoots()
+
+	for _, root := range steamRoots {
+		compatData := filepath.Join(root, "steamapps", "compatdata", eldenRingSteamID)
+		saveDir := filepath.Join(compatData, protonSaveRelPath)
+
+		entries, err := os.ReadDir(saveDir)
+		if err != nil {
+			continue
+		}
+		for _, entry := range entries {
+			if entry.IsDir() {
+				fullPath := filepath.Join(saveDir, entry.Name(), "ER0000.sl2")
+				if _, err := os.Stat(fullPath); err == nil {
+					return fullPath, nil
+				}
+			}
+		}
+	}
+
+	return "", fmt.Errorf(
+		"save file ER0000.sl2 not found in any Steam library\n"+
+			"  searched roots: %v\n"+
+			"  set save_path manually in config.json or re-run setup",
+		steamRoots,
+	)
+}
+
+func collectSteamRoots() []string {
+	home, _ := os.UserHomeDir()
+
+	candidates := []string{
+		filepath.Join(home, ".steam", "steam"),
+		filepath.Join(home, ".steam", "root"),
+		filepath.Join(home, ".local", "share", "Steam"),
+		"/usr/share/steam",
+	}
+
+	for _, base := range candidates {
+		vdfPath := filepath.Join(base, "steamapps", "libraryfolders.vdf")
+		if roots, err := parseSteamLibraryFolders(vdfPath); err == nil {
+			candidates = append(candidates, roots...)
+		}
+	}
+
+	seen := make(map[string]struct{}, len(candidates))
+	unique := candidates[:0]
+	for _, p := range candidates {
+		if _, ok := seen[p]; !ok {
+			seen[p] = struct{}{}
+			unique = append(unique, p)
+		}
+	}
+	return unique
+}
+
+func parseSteamLibraryFolders(vdfPath string) ([]string, error) {
+	data, err := os.ReadFile(vdfPath)
+	if err != nil {
+		return nil, err
+	}
+
+	var paths []string
+	lines := splitLines(data)
+	for _, line := range lines {
+		key, value, ok := parseVDFKeyValue(line)
+		if ok && key == "path" && value != "" {
+			paths = append(paths, value)
+		}
+	}
+	return paths, nil
+}
+
+func splitLines(data []byte) []string {
+	var lines []string
+	start := 0
+	for i, b := range data {
+		if b == '\n' {
+			lines = append(lines, string(data[start:i]))
+			start = i + 1
+		}
+	}
+	if start < len(data) {
+		lines = append(lines, string(data[start:]))
+	}
+	return lines
+}
+
+func parseVDFKeyValue(line string) (key, value string, ok bool) {
+	s := trimSpaceASCII(line)
+	if len(s) == 0 || s[0] != '"' {
+		return
+	}
+	s = s[1:]
+	end := indexByte(s, '"')
+	if end < 0 {
+		return
+	}
+	key = s[:end]
+	s = trimSpaceASCII(s[end+1:])
+	if len(s) == 0 || s[0] != '"' {
+		return
+	}
+	s = s[1:]
+	end = indexByte(s, '"')
+	if end < 0 {
+		return
+	}
+	value = s[:end]
+	ok = true
+	return
+}
+
+func trimSpaceASCII(s string) string {
+	i := 0
+	for i < len(s) && (s[i] == ' ' || s[i] == '\t' || s[i] == '\r') {
+		i++
+	}
+	j := len(s)
+	for j > i && (s[j-1] == ' ' || s[j-1] == '\t' || s[j-1] == '\r') {
+		j--
+	}
+	return s[i:j]
+}
+
+func indexByte(s string, b byte) int {
+	for i := 0; i < len(s); i++ {
+		if s[i] == b {
+			return i
+		}
+	}
+	return -1
 }
 
 func readSlotData(f *os.File, slotIndex int) (Profile, bool) {
