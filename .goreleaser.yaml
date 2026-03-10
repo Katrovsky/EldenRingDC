@@ -10,6 +10,8 @@ before:
 builds:
   - id: counter
     binary: eldenring-death-counter
+    flags:
+      - -trimpath
     ldflags:
       - -s -w
     env:
@@ -24,7 +26,6 @@ archives:
       {{ .ProjectName }}_
       {{- title .Os }}_
       {{- if eq .Arch "amd64" }}x86_64
-      {{- else if eq .Arch "386" }}i386
       {{- else }}{{ .Arch }}{{ end }}
     format_overrides:
       - goos: windows
