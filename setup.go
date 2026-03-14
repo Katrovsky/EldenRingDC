@@ -18,55 +18,44 @@ func readLine(prompt string) string {
 	return strings.TrimSpace(stdinScanner.Text())
 }
 
-// selectProfile показывает список персонажей и возвращает выбранный.
-// Если персонаж один — выбирается автоматически без интерактива.
-// Если несколько — навигация стрелками ↑/↓, выбор Enter.
+// selectProfile возвращает выбранный профиль.
+// Один персонаж — выбирается автоматически.
+// Несколько — навигация стрелками.
 func selectProfile(profiles []Profile) Profile {
 	if len(profiles) == 1 {
 		fmt.Printf("Character: %s (Level %d, Slot %d) — selected automatically\n",
 			profiles[0].Name, profiles[0].Level, profiles[0].SlotIndex)
 		return profiles[0]
 	}
-
 	return arrowSelect(profiles)
 }
 
-// arrowSelect — интерактивный выбор стрелками в raw-режиме терминала.
 func arrowSelect(profiles []Profile) Profile {
 	oldState, err := term.MakeRaw(int(os.Stdin.Fd()))
 	if err != nil {
-		// Терминал не поддерживает raw-режим — fallback на ввод номера
 		return fallbackSelect(profiles)
 	}
 	defer term.Restore(int(os.Stdin.Fd()), oldState)
 
 	cursor := 0
-	render := func() {
-		// Переходим в начало блока: поднимаемся на len(profiles)+1 строк вверх
-		fmt.Printf("\r\033[%dA", len(profiles)+1)
-		fmt.Print("\r\033[KSelect character (↑/↓ arrows, Enter to confirm):\r\n")
+
+	printList := func() {
 		for i, p := range profiles {
 			if i == cursor {
-				fmt.Printf("\r\033[K  \033[7m▶  %s  (Level %d, Slot %d)\033[0m\r\n",
-					p.Name, p.Level, p.SlotIndex)
+				fmt.Printf("  > %s  (Level %d, Slot %d)\r\n", p.Name, p.Level, p.SlotIndex)
 			} else {
-				fmt.Printf("\r\033[K     %s  (Level %d, Slot %d)\r\n",
-					p.Name, p.Level, p.SlotIndex)
+				fmt.Printf("    %s  (Level %d, Slot %d)\r\n", p.Name, p.Level, p.SlotIndex)
 			}
 		}
 	}
 
-	// Первичная отрисовка — просто печатаем, без подъёма
-	fmt.Print("Select character (↑/↓ arrows, Enter to confirm):\r\n")
-	for i, p := range profiles {
-		if i == cursor {
-			fmt.Printf("  \033[7m▶  %s  (Level %d, Slot %d)\033[0m\r\n",
-				p.Name, p.Level, p.SlotIndex)
-		} else {
-			fmt.Printf("     %s  (Level %d, Slot %d)\r\n",
-				p.Name, p.Level, p.SlotIndex)
-		}
+	render := func() {
+		fmt.Printf("\033[%dA", len(profiles))
+		printList()
 	}
+
+	fmt.Print("Select character (up/down arrows, Enter to confirm):\r\n")
+	printList()
 
 	buf := make([]byte, 3)
 	for {
@@ -76,25 +65,24 @@ func arrowSelect(profiles []Profile) Profile {
 		}
 
 		switch {
-		case n == 1 && buf[0] == 13: // Enter
-			// Восстановить терминал до вывода следующего текста
+		case n == 1 && buf[0] == 13:
 			term.Restore(int(os.Stdin.Fd()), oldState)
-			fmt.Printf("\r\nSelected: %s (Level %d, Slot %d)\r\n",
+			fmt.Printf("\nSelected: %s (Level %d, Slot %d)\n",
 				profiles[cursor].Name, profiles[cursor].Level, profiles[cursor].SlotIndex)
 			return profiles[cursor]
 
-		case n == 1 && buf[0] == 3: // Ctrl+C
+		case n == 1 && buf[0] == 3:
 			term.Restore(int(os.Stdin.Fd()), oldState)
-			fmt.Println("\r\nSetup cancelled.")
+			fmt.Println("\nSetup cancelled.")
 			os.Exit(0)
 
-		case n == 3 && buf[0] == 27 && buf[1] == 91 && buf[2] == 65: // ↑
+		case n == 3 && buf[0] == 27 && buf[1] == 91 && buf[2] == 65:
 			if cursor > 0 {
 				cursor--
 				render()
 			}
 
-		case n == 3 && buf[0] == 27 && buf[1] == 91 && buf[2] == 66: // ↓
+		case n == 3 && buf[0] == 27 && buf[1] == 91 && buf[2] == 66:
 			if cursor < len(profiles)-1 {
 				cursor++
 				render()
@@ -103,13 +91,11 @@ func arrowSelect(profiles []Profile) Profile {
 	}
 }
 
-// fallbackSelect — числовой ввод, если raw-режим недоступен (CI, pipe и т.п.).
 func fallbackSelect(profiles []Profile) Profile {
 	fmt.Println("Found characters:")
 	for _, p := range profiles {
 		fmt.Printf("  Slot %d: %s (Level %d)\n", p.SlotIndex, p.Name, p.Level)
 	}
-
 	for {
 		input := readLine("Enter slot number: ")
 		var slot int
@@ -122,7 +108,7 @@ func fallbackSelect(profiles []Profile) Profile {
 				return p
 			}
 		}
-		fmt.Printf("Slot %d not found. Please choose from the list above.\n", slot)
+		fmt.Printf("Slot %d not found.\n", slot)
 	}
 }
 
@@ -159,9 +145,7 @@ func runSetupWizard(configPath string) bool {
 	webUI := enableWeb != "n" && enableWeb != "N"
 
 	var textFile bool
-	if webUI {
-		textFile = false
-	} else {
+	if !webUI {
 		fmt.Println("Web overlay disabled. Text file output will be enabled.")
 		textFile = true
 	}
