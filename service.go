@@ -17,6 +17,10 @@ func runService(configPath, exeDir string) {
 	var deathFilePath string
 	if config.EnableTextFile {
 		deathFilePath = filepath.Join(exeDir, "death.txt")
+		// Создаём файл с нулём сразу, чтобы OBS можно было настроить до первой смерти
+		if err := os.WriteFile(deathFilePath, []byte("0"), 0644); err != nil {
+			fmt.Printf("Warning: could not create death file: %v\n", err)
+		}
 	}
 
 	if config.EnableWebUI {
