@@ -14,27 +14,29 @@ builds:
       - -trimpath
     ldflags:
       - -s -w
+      - -X main.version={{.Version}}
     env:
       - CGO_ENABLED=0
     goos:
       - linux
       - windows
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+    goamd64:
+      - v3
+    ignore:
+      - goarch: "386"
 
 archives:
-  - formats: [tar.gz]
-    name_template: >-
-      {{ .ProjectName }}_
-      {{- title .Os }}_
-      {{- if eq .Arch "amd64" }}x86_64
-      {{- else }}{{ .Arch }}{{ end }}
+  - formats:
+      - tar.gz
+    name_template: "{{ .ProjectName }}-{{ .Os }}-{{ .Arch }}"
     format_overrides:
       - goos: windows
-        formats: [zip]
-    files:
-      - README.md
-
-checksum:
-  name_template: "checksums.txt"
+        formats:
+          - zip
 
 changelog:
   sort: asc
