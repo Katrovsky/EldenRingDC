@@ -1,6 +1,4 @@
 # yaml-language-server: $schema=https://goreleaser.com/static/schema.json
-# vim: set ts=2 sw=2 tw=0 fo=cnqoj
-
 version: 2
 
 before:
@@ -26,17 +24,18 @@ builds:
       - arm64
     goamd64:
       - v3
-    ignore:
-      - goarch: "386"
+    goarm64:
+      - v8.0
 
 archives:
-  - formats:
-      - tar.gz
+  - formats: [tar.gz]
     name_template: "{{ .ProjectName }}-{{ .Os }}-{{ .Arch }}"
     format_overrides:
       - goos: windows
-        formats:
-          - zip
+        formats: [zip]
+
+checksum:
+  name_template: checksums.txt
 
 changelog:
   sort: asc
@@ -55,8 +54,4 @@ release:
   draft: false
   prerelease: auto
   name_template: "v{{ .Version }}"
-  footer: >-
-
-    ---
-
-    Released by [GoReleaser](https://github.com/goreleaser/goreleaser).
+  footer: "Released by [GoReleaser](https://github.com/goreleaser/goreleaser)."
