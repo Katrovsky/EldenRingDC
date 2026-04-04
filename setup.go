@@ -18,9 +18,6 @@ func readLine(prompt string) string {
 	return strings.TrimSpace(stdinScanner.Text())
 }
 
-// selectProfile возвращает выбранный профиль.
-// Один персонаж — выбирается автоматически.
-// Несколько — навигация стрелками.
 func selectProfile(profiles []Profile) Profile {
 	if len(profiles) == 1 {
 		fmt.Printf("Character: %s (Level %d, Slot %d) — selected automatically\n",
@@ -31,6 +28,8 @@ func selectProfile(profiles []Profile) Profile {
 }
 
 func arrowSelect(profiles []Profile) Profile {
+	enableANSI()
+
 	oldState, err := term.MakeRaw(int(os.Stdin.Fd()))
 	if err != nil {
 		return fallbackSelect(profiles)
@@ -65,24 +64,24 @@ func arrowSelect(profiles []Profile) Profile {
 		}
 
 		switch {
-		case n == 1 && buf[0] == 13:
+		case n == 1 && buf[0] == 13: // Enter
 			term.Restore(int(os.Stdin.Fd()), oldState)
 			fmt.Printf("\nSelected: %s (Level %d, Slot %d)\n",
 				profiles[cursor].Name, profiles[cursor].Level, profiles[cursor].SlotIndex)
 			return profiles[cursor]
 
-		case n == 1 && buf[0] == 3:
+		case n == 1 && buf[0] == 3: // Ctrl+C
 			term.Restore(int(os.Stdin.Fd()), oldState)
 			fmt.Println("\nSetup cancelled.")
 			os.Exit(0)
 
-		case n == 3 && buf[0] == 27 && buf[1] == 91 && buf[2] == 65:
+		case n == 3 && buf[0] == 27 && buf[1] == 91 && buf[2] == 65: // Up
 			if cursor > 0 {
 				cursor--
 				render()
 			}
 
-		case n == 3 && buf[0] == 27 && buf[1] == 91 && buf[2] == 66:
+		case n == 3 && buf[0] == 27 && buf[1] == 91 && buf[2] == 66: // Down
 			if cursor < len(profiles)-1 {
 				cursor++
 				render()
